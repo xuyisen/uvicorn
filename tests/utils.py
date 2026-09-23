@@ -16,7 +16,10 @@ from uvicorn import Config, Server
 async def run_server(config: Config, sockets: list[socket] | None = None) -> AsyncIterator[Server]:
     server = Server(config=config)
     task = asyncio.create_task(server.serve(sockets=sockets))
-    await asyncio.sleep(0.1)
+    for _ in range(100):
+        if server.started:
+            break
+        await asyncio.sleep(0.01)
     try:
         yield server
     finally:

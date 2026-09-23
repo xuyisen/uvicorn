@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import sys
+import time
 from collections.abc import AsyncGenerator
 from typing import Callable
 
@@ -137,3 +138,26 @@ def test_build_environ_encoding() -> None:
     assert environ["SCRIPT_NAME"] == "/文".encode().decode("latin-1")
     assert environ["PATH_INFO"] == b"/all".decode("latin-1")
     assert environ["HTTP_KEY"] == "value1,value2"
+
+
+def yield_two_chunks(environ: Environ, start_response: StartResponse) -> list[bytes]:
+    """WSGI app that yields chunks with a delay to trigger sender waiting."""
+    status = "200 OK"
+    output = b"Hello World!"
+    headers = [
+        ("Content-Type", "text/plain; charset=utf-8"),
+        ("Content-Length", str(len(output))),
+    ]
+    start_response(status, headers, None)
+    time.sleep(0.01)
+    yield output
+
+
+@pytest.mark.anyio
+async def test_wsgi_get_with_yield(wsgi_middleware: Callable) -> None:
+    """Test that the sender correctly waits when the send queue is empty."""
+    transport = httpx.ASGITransport(wsgi_middleware(yield_two_chunks))
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/")
+    assert response.status_code == 200
+    assert response.text == "Hello World!"

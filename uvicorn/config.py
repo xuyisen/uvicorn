@@ -223,7 +223,7 @@ class Config:
         ssl_version: int = SSL_PROTOCOL_VERSION,
         ssl_cert_reqs: int = ssl.CERT_NONE,
         ssl_ca_certs: str | os.PathLike[str] | None = None,
-        ssl_ciphers: str = "TLSv1",
+        ssl_ciphers: str | None = None,
         headers: list[tuple[str, str]] | None = None,
         factory: bool = False,
         h11_max_incomplete_event_size: int | None = None,
